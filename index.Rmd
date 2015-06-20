@@ -123,7 +123,7 @@ pmlTraining <- pmlTraining[-c(1:7)]
 pmlTesting <- pmlTesting[-c(1:7)]
 ```
 
-Finally, there are **`r ncol(pmlTraining)`** variables which we shall consider initially as **predictors** and one of them is the outcome, **classe**.
+Finally, there are **`r ncol(pmlTraining)`** variables which we shall consider initially as **predictors** and one outcome.
 
 ### D.5. The outcome variable, **classe**, in **pmlTraining**
 
