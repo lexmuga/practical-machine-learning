@@ -236,8 +236,6 @@ Hence, we shall be selecting the best model among the 3 variants of **Random For
 2. **Random Forest** with the data preprocessed by **center** and **scale**, and
 3. **Random forest** with the data preprocessed by **pca**.
 
-To select the best model we shall be using the **resamples** and **diffs** functions in **caret** as advised by **Max Kuhn** **(14)**. 
-
 ```{r usingParallelProcessing, echo=FALSE, message=FALSE, eval=T}
 # enable multi-core processing
 library(doParallel)
@@ -255,9 +253,8 @@ fitControl <- trainControl(method="cv",
 ```
 
 
-```{r validatingRFNoPreProc, echo=FALSE, message=FALSE, eval=F}
+```{r validatingRFNoPreProc, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
-start.time1 <- Sys.time()
 # training the randomForest model without preprocessing
 rfModel1 <- train(classe ~ .,  
                 data = selection,
@@ -265,19 +262,10 @@ rfModel1 <- train(classe ~ .,
                 trControl = fitControl,
                 prox=TRUE,
                 allowParallel=TRUE)
-end.time1 <- Sys.time()
-time.taken1 <- end.time1 - start.time1
-sprintf("Time Taken for Training the RF Model with no PreProc = %f minutes",
-        time.taken1
-        )
-save(rfModel1, file="rfModel1_02.RData")
+save(rfModel1, file="rfModel1_03.RData")
 ```
 
-```{r, echo=FALSE}
-load("rfmodel1_02.RData")
-```
-
-```{r preProcessWithCenterScale, echo=FALSE, message=FALSE, eval=F}
+```{r preProcessWithCenterScale, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
 # preprocessing the data with method = c("center", "scale")
 preProc <- preProcess(selection[-53],
@@ -287,9 +275,8 @@ preProc <- preProcess(selection[-53],
 selectCS <- predict(preProc, selection[-53])
 ```
 
-```{r validatingRFWithCS, echo=FALSE, message=FALSE, eval=F}
+```{r validatingRFWithCS, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
-start.time2 <- Sys.time()
 # training the rf model with data preprocessed by method=c("center","scale")
 rfModel2 <- train(selection$classe ~ .,  
                 data = selectCS,
@@ -297,21 +284,10 @@ rfModel2 <- train(selection$classe ~ .,
                 trControl = fitControl,
                 prox=TRUE,
                 allowParallel=TRUE)
-end.time2 <- Sys.time()
-time.taken2 <- end.time2 - start.time2
-sprintf("Time Taken for Training the RF Model PreProc with 'center-scale' = %f minutes",
-        time.taken2
-        )
-save(rfModel2, file="rfModel2_02.RData")
+save(rfModel2, file="rfModel2_03.RData")
 ```
 
-```{r ,echo=FALSE}
-load("rfmodel2_02.RData")
-```
-
-
-
-```{r preProcessWithPCA, echo=FALSE, message=FALSE, eval=F}
+```{r preProcessWithPCA, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
 # preprocessing the data with method = "pca"
 preProc <- preProcess(selection[-53],
@@ -321,9 +297,8 @@ preProc <- preProcess(selection[-53],
 selectPC <- predict(preProc, selection[-53])
 ```
 
-```{r validatingRFWithPCA, echo=FALSE, message=FALSE, eval=F}
+```{r validatingRFWithPCA, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
-start.time3 <- Sys.time()
 # training the rf model with data preprocessed by method="pca"
 rfModel3 <- train(selection$classe ~ .,  
                 data = selectPC,
@@ -331,71 +306,58 @@ rfModel3 <- train(selection$classe ~ .,
                 trControl = fitControl,
                 prox=TRUE,
                 allowParallel=TRUE)
-end.time3 <- Sys.time()
-time.taken3 <- end.time3 - start.time3
-sprintf("Time Taken for Training the RF Model PreProc with 'pca' = %f minutes",
-        time.taken3
-        )
-save(rfModel3, file="rfModel3_02.RData")
+save(rfModel3, file="rfModel3_03.RData")
 ```
 
-
-```{r, echo=FALSE}
-load("rfmodel3_02.RData")
-```
+To select the best model we shall be using the **resamples** and **diffs** functions in **caret** as advised by **Max Kuhn** **(14)**. 
 
 Since the **random number seeds** were initialized to the same value prior to training the models, it follows that the same folds where used for each of the three models. Note that in resampling we used 15 folds in cross-validating.
 
+The function **resamples** in **caret** package performs 15 resamples using the same 15 folds to each of the 3 models. We can compare the 3 models with respect to **Accuracy** and **Kappa** produce by the **resamples** function.
+
 ```{r resamplingThreeModels, echo=FALSE, message=FALSE}
-#set.seed(100200300)
-#start.time4 <- Sys.time()
 resampRFs <- resamples(list(rf1=rfModel1,
                             rf2=rfModel2,
                             rf3=rfModel3))
-#end.time4 <- Sys.time()
-#time.taken4 <- end.time4 - start.time4
-#sprintf("Time Taken for Resampling = %f minutes", 
-#        time.taken4)
-summary(resampRFs)
+summary(resampRFs)$statistics
+```
+
+There is a tie for the best model between the **First Model (no Proc)** and the **Second Model (preProc with 'center-scale')** as shown in the **Accuracy** and **Kappa** metrics in **resampling**.
+See the **bwplot** below.
+
+```{r, echo=FALSE, message=FALSE, include=FALSE}
+png(file="bwplot.png", width=560, height = 300)
+bwplot(resampRFs)
+dev.off()
+```
+
+![](bwplot.png)
+
+It is confirmed by the $\mathbf{\text{p-value} > 0.05}$ calculated by the **diff** function in both metrics. See the table below. So we cannot reject the null hypothesis that the respective **Accuracy** and **Kappa** of the **First Model** and **Second Model** are equal.
+
+
+```{r, echo=FALSE, message=FALSE}
 diffRFs <- diff(resampRFs)
 summary(diffRFs)
 ```
 
-The function **resamples** in **caret** package performs 15 resamples using the same 15 folds to each of the 3 models. We can compare the 3 models with respect to **Accuracy** and **Kappa** produce by the **resamples** function.
-
-There is a tie for the best model between the **First Model (no Proc)** and the **Second Model (preProc with 'center-scale')** as shown in the **Accuracy** and **Kappa** metrics in **resampling**.
-
-It is confirmed by the $\mathbf{\text{p-value} > 0.05}$ calculated by the **diff** function in both metrics. So we cannot reject the null hypothesis that the respective **Accuracy** and **Kappa** of the **First Model** and **Second Model** are equal.
-
-However since we will be training the best model with about **70\%** of the training data set, we choose the **First Model (no preProc)** as our best model since it is simpler to build compared to the **Second Model (with 'center-scale')**.
+We choose the **First Model (no preProc)** as our best model since it is simpler to build than the **Second Model (with 'center-scale')**.
 
 ## Training Phase
 
-We shall now train our best model with **70\%** of the **pml-training** data set.
+We shall now train our best model with **70\%** of the **pmlTraining** data set.
 
-```{r trainingBestModel, echo=FALSE, message=FALSE, eval=F}
+```{r trainingBestModel, echo=FALSE, message=FALSE, eval=T}
 set.seed(100200300)
-start.time5 <- Sys.time()
 rfBestModel <- train(classe ~ .,  
                      data = training,
                      method = "rf",
                      trControl = fitControl,
                      allowParallel=TRUE
                      )
-end.time5 <- Sys.time()
-time.taken5 <- end.time5 - start.time5
-time.taken5
-sprintf("Time Taken for Training the RF Best Model = %f minutes",
-        time.taken5
-        )
-save(rfBestModel, file="rfBestModel02.RData")
+save(rfBestModel, file="rfBestModel03.RData")
 ```
 
-```{r, echo=FALSE}
-load("rfBestModel02.RData")
-```
-
-The training of the model with 70\% of the **pmlTraining** data set took about **21 minutes**.
 
 Professor Leek defined **In-Sample Error** or **Resubstitution Error** "as the error rate you get on the same data set you used to build your predictor" **(15)**. 
 
@@ -475,6 +437,23 @@ The main problem of this project is predict the manner in which the participants
 We believe that we are able to answer this problem using the **Random Forest Model** without any preprocessing. 
 
 The confusion matrix of the **Random Forest BestModel** on the **classe** variable of the **testing** data set  shows an **Accuracy rating of 99.08\%** and the **Kappa rating of 98.84\%**.
+
+Predicting the **pmlTesting** data set with the **Best Random Forest Model**, we obtained.
+
+```{r, echo=FALSE, message=FALSE}
+resultPMLTesting <- predict(rfBestModel, pmlTesting)
+res <- data.frame(problemId = pmlTesting$problem_id,
+                  classe=resultPMLTesting)
+res
+```
+
+The frequency distribution of our predicted values on the **pmlTesting** data set is given by:
+
+```{r, echo=FALSE, message=FALSE}
+table(resultPMLTesting)
+```
+
+The  accuracy of this prediction is confirmed when we obtained a score of **20/20** in the assignment part of this project.
 
 # References
 
